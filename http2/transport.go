@@ -2463,9 +2463,10 @@ func (b transportResponseBody) Read(p []byte) (n int, err error) {
 		// ------------------------------------------------------------------
 		const aggressiveThreshold = 16384 // 16KB
 
-		// Check if the configured initial window is small (e.g. Firefox's 128KB or 65KB).
-		// If so, we need to be aggressive with updates.
-		isSmallWindow := cc.initialWindowSize < 1048576 // < 1MB
+		// Check if our advertised receive window is small (e.g. Firefox's 128KB).
+		// cc.streamFlow is the value we sent in SETTINGS_INITIAL_WINDOW_SIZE;
+		// cc.initialWindowSize is the *server's* upload window — wrong to use here.
+		isSmallWindow := cc.streamFlow < 1048576 // < 1MB
 
 		if isSmallWindow {
 			if unsent > aggressiveThreshold {
