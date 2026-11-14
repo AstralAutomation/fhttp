@@ -12,6 +12,7 @@ import (
 	"io"
 	"net"
 	"net/url"
+	"slices"
 	"strings"
 	"testing"
 	"testing/iotest"
@@ -58,24 +59,24 @@ var reqWriteTests = []reqWriteTest{
 		},
 
 		WantWrite: "GET / HTTP/1.1\r\n" +
-			"Host: www.techcrunch.com\r\n" +
-			"User-Agent: Fake\r\n" +
 			"Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8\r\n" +
 			"Accept-Charset: ISO-8859-1,utf-8;q=0.7,*;q=0.7\r\n" +
 			"Accept-Encoding: gzip,deflate\r\n" +
 			"Accept-Language: en-us,en;q=0.5\r\n" +
+			"Host: www.techcrunch.com\r\n" +
 			"Keep-Alive: 300\r\n" +
-			"Proxy-Connection: keep-alive\r\n\r\n",
+			"Proxy-Connection: keep-alive\r\n" +
+			"User-Agent: Fake\r\n\r\n",
 
 		WantProxy: "GET http://www.techcrunch.com/ HTTP/1.1\r\n" +
-			"Host: www.techcrunch.com\r\n" +
-			"User-Agent: Fake\r\n" +
 			"Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8\r\n" +
 			"Accept-Charset: ISO-8859-1,utf-8;q=0.7,*;q=0.7\r\n" +
 			"Accept-Encoding: gzip,deflate\r\n" +
 			"Accept-Language: en-us,en;q=0.5\r\n" +
+			"Host: www.techcrunch.com\r\n" +
 			"Keep-Alive: 300\r\n" +
-			"Proxy-Connection: keep-alive\r\n\r\n",
+			"Proxy-Connection: keep-alive\r\n" +
+			"User-Agent: Fake\r\n\r\n",
 	},
 	// HTTP/1.1 => chunked coding; body; empty trailer
 	1: {
@@ -96,14 +97,14 @@ var reqWriteTests = []reqWriteTest{
 
 		WantWrite: "GET /search HTTP/1.1\r\n" +
 			"Host: www.google.com\r\n" +
-			"User-Agent: Go-http-client/1.1\r\n" +
-			"Transfer-Encoding: chunked\r\n\r\n" +
+			"Transfer-Encoding: chunked\r\n" +
+			"User-Agent: Go-http-client/1.1\r\n\r\n" +
 			chunk("abcdef") + chunk(""),
 
 		WantProxy: "GET http://www.google.com/search HTTP/1.1\r\n" +
 			"Host: www.google.com\r\n" +
-			"User-Agent: Go-http-client/1.1\r\n" +
-			"Transfer-Encoding: chunked\r\n\r\n" +
+			"Transfer-Encoding: chunked\r\n" +
+			"User-Agent: Go-http-client/1.1\r\n\r\n" +
 			chunk("abcdef") + chunk(""),
 	},
 	// HTTP/1.1 POST => chunked coding; body; empty trailer
@@ -125,17 +126,17 @@ var reqWriteTests = []reqWriteTest{
 		Body: []byte("abcdef"),
 
 		WantWrite: "POST /search HTTP/1.1\r\n" +
-			"Host: www.google.com\r\n" +
-			"User-Agent: Go-http-client/1.1\r\n" +
 			"Connection: close\r\n" +
-			"Transfer-Encoding: chunked\r\n\r\n" +
+			"Host: www.google.com\r\n" +
+			"Transfer-Encoding: chunked\r\n" +
+			"User-Agent: Go-http-client/1.1\r\n\r\n" +
 			chunk("abcdef") + chunk(""),
 
 		WantProxy: "POST http://www.google.com/search HTTP/1.1\r\n" +
-			"Host: www.google.com\r\n" +
-			"User-Agent: Go-http-client/1.1\r\n" +
 			"Connection: close\r\n" +
-			"Transfer-Encoding: chunked\r\n\r\n" +
+			"Host: www.google.com\r\n" +
+			"Transfer-Encoding: chunked\r\n" +
+			"User-Agent: Go-http-client/1.1\r\n\r\n" +
 			chunk("abcdef") + chunk(""),
 	},
 
@@ -158,18 +159,18 @@ var reqWriteTests = []reqWriteTest{
 		Body: []byte("abcdef"),
 
 		WantWrite: "POST /search HTTP/1.1\r\n" +
-			"Host: www.google.com\r\n" +
-			"User-Agent: Go-http-client/1.1\r\n" +
 			"Connection: close\r\n" +
 			"Content-Length: 6\r\n" +
+			"Host: www.google.com\r\n" +
+			"User-Agent: Go-http-client/1.1\r\n" +
 			"\r\n" +
 			"abcdef",
 
 		WantProxy: "POST http://www.google.com/search HTTP/1.1\r\n" +
-			"Host: www.google.com\r\n" +
-			"User-Agent: Go-http-client/1.1\r\n" +
 			"Connection: close\r\n" +
 			"Content-Length: 6\r\n" +
+			"Host: www.google.com\r\n" +
+			"User-Agent: Go-http-client/1.1\r\n" +
 			"\r\n" +
 			"abcdef",
 	},
@@ -189,16 +190,16 @@ var reqWriteTests = []reqWriteTest{
 		Body: []byte("abcdef"),
 
 		WantWrite: "POST / HTTP/1.1\r\n" +
+			"Content-Length: 6\r\n" +
 			"Host: example.com\r\n" +
 			"User-Agent: Go-http-client/1.1\r\n" +
-			"Content-Length: 6\r\n" +
 			"\r\n" +
 			"abcdef",
 
 		WantProxy: "POST http://example.com/ HTTP/1.1\r\n" +
+			"Content-Length: 6\r\n" +
 			"Host: example.com\r\n" +
 			"User-Agent: Go-http-client/1.1\r\n" +
-			"Content-Length: 6\r\n" +
 			"\r\n" +
 			"abcdef",
 	},
@@ -232,14 +233,14 @@ var reqWriteTests = []reqWriteTest{
 
 		WantWrite: "POST / HTTP/1.1\r\n" +
 			"Host: example.com\r\n" +
-			"User-Agent: Go-http-client/1.1\r\n" +
 			"Transfer-Encoding: chunked\r\n" +
+			"User-Agent: Go-http-client/1.1\r\n" +
 			"\r\n0\r\n\r\n",
 
 		WantProxy: "POST / HTTP/1.1\r\n" +
 			"Host: example.com\r\n" +
-			"User-Agent: Go-http-client/1.1\r\n" +
 			"Transfer-Encoding: chunked\r\n" +
+			"User-Agent: Go-http-client/1.1\r\n" +
 			"\r\n0\r\n\r\n",
 	},
 
@@ -257,15 +258,15 @@ var reqWriteTests = []reqWriteTest{
 		Body: func() io.ReadCloser { return nil },
 
 		WantWrite: "POST / HTTP/1.1\r\n" +
+			"Content-Length: 0\r\n" +
 			"Host: example.com\r\n" +
 			"User-Agent: Go-http-client/1.1\r\n" +
-			"Content-Length: 0\r\n" +
 			"\r\n",
 
 		WantProxy: "POST / HTTP/1.1\r\n" +
+			"Content-Length: 0\r\n" +
 			"Host: example.com\r\n" +
 			"User-Agent: Go-http-client/1.1\r\n" +
-			"Content-Length: 0\r\n" +
 			"\r\n",
 	},
 
@@ -284,14 +285,14 @@ var reqWriteTests = []reqWriteTest{
 
 		WantWrite: "POST / HTTP/1.1\r\n" +
 			"Host: example.com\r\n" +
-			"User-Agent: Go-http-client/1.1\r\n" +
-			"Transfer-Encoding: chunked\r\n\r\n" +
+			"Transfer-Encoding: chunked\r\n" +
+			"User-Agent: Go-http-client/1.1\r\n\r\n" +
 			chunk("x") + chunk(""),
 
 		WantProxy: "POST / HTTP/1.1\r\n" +
 			"Host: example.com\r\n" +
-			"User-Agent: Go-http-client/1.1\r\n" +
-			"Transfer-Encoding: chunked\r\n\r\n" +
+			"Transfer-Encoding: chunked\r\n" +
+			"User-Agent: Go-http-client/1.1\r\n\r\n" +
 			chunk("x") + chunk(""),
 	},
 
@@ -415,8 +416,11 @@ var reqWriteTests = []reqWriteTest{
 			},
 		},
 
+		// fhttp honours an explicit Host entry in Request.Header (header
+		// control is the point of this fork); upstream ignores it in favour
+		// of Request.Host / URL.Host.
 		WantWrite: "GET /search HTTP/1.1\r\n" +
-			"Host: \r\n" +
+			"Host: bad.example.com\r\n" +
 			"User-Agent: Go-http-client/1.1\r\n\r\n",
 	},
 
@@ -476,9 +480,9 @@ var reqWriteTests = []reqWriteTest{
 		},
 
 		WantWrite: "GET / HTTP/1.1\r\n" +
+			"ALL-CAPS: x\r\n" +
 			"Host: www.google.com\r\n" +
 			"User-Agent: Go-http-client/1.1\r\n" +
-			"ALL-CAPS: x\r\n" +
 			"\r\n",
 	},
 
@@ -599,13 +603,13 @@ var reqWriteTests = []reqWriteTest{
 		},
 		Body: nil,
 		WantWrite: "PATCH / HTTP/1.1\r\n" +
+			"Content-Length: 0\r\n" +
 			"Host: example.com\r\n" +
-			"User-Agent: Go-http-client/1.1\r\n" +
-			"Content-Length: 0\r\n\r\n",
+			"User-Agent: Go-http-client/1.1\r\n\r\n",
 		WantProxy: "PATCH / HTTP/1.1\r\n" +
+			"Content-Length: 0\r\n" +
 			"Host: example.com\r\n" +
-			"User-Agent: Go-http-client/1.1\r\n" +
-			"Content-Length: 0\r\n\r\n",
+			"User-Agent: Go-http-client/1.1\r\n\r\n",
 	},
 }
 
@@ -824,8 +828,8 @@ func TestRequestWriteClosesBody(t *testing.T) {
 	}
 	expected := "POST / HTTP/1.1\r\n" +
 		"Host: foo.com\r\n" +
-		"User-Agent: Go-http-client/1.1\r\n" +
-		"Transfer-Encoding: chunked\r\n\r\n" +
+		"Transfer-Encoding: chunked\r\n" +
+		"User-Agent: Go-http-client/1.1\r\n\r\n" +
 		chunk("my body") +
 		chunk("")
 	if buf.String() != expected {
@@ -874,7 +878,7 @@ func TestRequestWriteError(t *testing.T) {
 	}
 
 	req, _ := NewRequest("GET", "http://example.com/", nil)
-	const writeCalls = 4 // number of Write calls in current implementation
+	const writeCalls = 10 // number of Write calls in current implementation
 	sawGood := false
 	for n := 0; n <= writeCalls+2; n++ {
 		failAfter = n
@@ -975,3 +979,49 @@ func (c *dumpConn) RemoteAddr() net.Addr               { return nil }
 func (c *dumpConn) SetDeadline(t time.Time) error      { return nil }
 func (c *dumpConn) SetReadDeadline(t time.Time) error  { return nil }
 func (c *dumpConn) SetWriteDeadline(t time.Time) error { return nil }
+
+// The transfer headers take their values from the request but keep the name
+// the caller wrote.
+func TestRequestWriteKeepsTransferHeaderNames(t *testing.T) {
+	tests := []struct {
+		name    string
+		method  string
+		body    io.Reader
+		length  int64
+		header  Header
+		trailer Header
+		want    []string // transfer header lines, in order
+	}{
+		{"lowercase", "POST", strings.NewReader("abc"), 3, Header{"content-length": {"3"}}, nil, []string{"content-length: 3"}},
+		{"uppercase with a wrong value", "POST", strings.NewReader("abc"), 3, Header{"CONTENT-LENGTH": {"99"}}, nil, []string{"CONTENT-LENGTH: 3"}},
+		{"two spellings", "POST", strings.NewReader("abc"), 3, Header{"content-length": {"3"}, "Content-length": {"3"}}, nil, []string{"Content-Length: 3"}},
+		{"GET drops it", "GET", nil, 0, Header{"content-length": {"3"}}, nil, nil},
+		{"lowercase transfer-encoding", "POST", io.MultiReader(strings.NewReader("abc")), -1, Header{"transfer-encoding": {"chunked"}}, nil, []string{"transfer-encoding: chunked"}},
+		{"lowercase trailer", "POST", io.MultiReader(strings.NewReader("abc")), -1, Header{"trailer": {"x"}}, Header{"X-Foo": nil}, []string{"Transfer-Encoding: chunked", "trailer: X-Foo"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := dummyRequest(tt.method)
+			req.Header, req.ContentLength, req.Trailer = tt.header, tt.length, tt.trailer
+			if tt.body != nil {
+				req.Body = io.NopCloser(tt.body)
+			}
+			var buf bytes.Buffer
+			if err := req.Write(&buf); err != nil {
+				t.Fatal(err)
+			}
+			head, _, _ := strings.Cut(buf.String(), "\r\n\r\n")
+			var got []string
+			for _, line := range strings.Split(head, "\r\n")[1:] {
+				name, _, _ := strings.Cut(line, ":")
+				switch strings.ToLower(name) {
+				case "content-length", "transfer-encoding", "trailer":
+					got = append(got, line)
+				}
+			}
+			if !slices.Equal(got, tt.want) {
+				t.Errorf("transfer headers %q, want %q\n%s", got, tt.want, head)
+			}
+		})
+	}
+}
