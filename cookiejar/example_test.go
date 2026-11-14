@@ -60,7 +60,7 @@ func ExampleNew() {
 	}
 	// Output:
 	// After 1st request:
-	//   Flavor: Chocolate Chip
+	//   Flavor: "Chocolate Chip"
 	// After 2nd request:
-	//   Flavor: Oatmeal Raisin
+	//   Flavor: "Oatmeal Raisin"
 }
